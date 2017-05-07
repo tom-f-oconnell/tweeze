@@ -1,0 +1,2 @@
+why does pyserial start consistently write_timeout-ing after a certain length of time?
+    -certain event causing it? unclear

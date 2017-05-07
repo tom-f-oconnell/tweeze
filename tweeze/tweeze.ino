@@ -33,6 +33,7 @@ int period = 1;
 void setup() {
   Serial.begin(9600);
 
+  // TODO way to not change position on attach?
   attach_all();
 
   // TODO maybe remove (particularly if not using attach_all before this
@@ -40,6 +41,7 @@ void setup() {
   for (int i = 0; i < NUM_SERVOS; i++) {
     p[i] = s[i].read();
   }
+  detach_all();
   
   for (int i = 0; i < NUM_SERVOS; i++) {
     v[i] = 0;
@@ -48,7 +50,7 @@ void setup() {
 }
 
 boolean in_range(int p) {
-  return p > MIN_POS && p < MAX_POS;
+  return p >= MIN_POS && p <= MAX_POS;
 }
 
 int sign(int i) {
@@ -61,6 +63,7 @@ int sign(int i) {
   }
 }
 
+// TODO fix 179 / 1 cases
 boolean will_move(int si) {
   // step size does not matter in right operand to &&
   return sign(v[si]) != 0 && in_range(p[si] + sign(v[si]));
@@ -84,14 +87,28 @@ void attach_needed() {
   }
 }
 
+// see will_move TODO
 void move_needed() {
   for (int i=0;i<NUM_SERVOS;i++) {
     if (will_move(i)) {
-      Serial.print("moving to ");
-      Serial.println(p[i] + step_size * sign(v[i]));
+      //Serial.print("moving to ");
+      //Serial.println(p[i] + step_size * sign(v[i]));
 
       u[i] = step_size * sign(v[i]);
-      s[i].write(p[i] + u[i]);
+
+      int new_p = p[i] + u[i];
+      /*
+      if (MAX_POS < new_p) {
+        new_p = MAX_POS;
+        u[i] = new_p - p[i];
+        
+      } else if (MIN_POS > new_p) {
+        new_p = MIN_POS;
+        u[i] = new_p - p[i];
+      }
+      */
+      
+      s[i].write(new_p);
     }
   }
 }
@@ -142,41 +159,19 @@ void print_rates() {
 
 // TODO also detach servos if not in active serial communication?
 void loop() {
-  Serial.println("loop");
   // TODO still detach servos if they are at bounds / v=0? would need to handle retachment then
-  
-  print_positions();
-  print_rates();
-  Serial.println("");
-
-  // TODO problems if this gets interrupted? tolerable performance if i disable interrupts?
-  // (non-issue because serialEvent happens only at end of loop. not interrupt based.)
-  
-  //attach_needed();
+  attach_needed();
   move_needed();
-
-  unsigned long start_time = millis();
-  unsigned long end_time = start_time + period;
-  while (millis() < end_time) {
-    /*
-    if (interrupted) {
-      // starts loop() from the beginning again
-      return;
-    }
-    */
-    ;
-  }
-  
+  delay(period);
   update_positions();
-  //detach_all();
+  detach_all();
 }
 
-// TODO if period isn't limiting serialEvent response time now. what is?
-
-// this function name has special importance in the Arduino environment
-// it is an interrupt triggered by receipt of serial data
-void serialEvent() {
+void update_control() {
   if (Serial.available() < sizeof(servo_update)) {
+    Serial.print("only ");
+    Serial.print(Serial.available());
+    Serial.println(" bytes available");
     return;
   }
 
@@ -188,4 +183,23 @@ void serialEvent() {
     data.arr[i] = buff[i];
   }
   v[data.u.dim] = data.u.velocity;
+  //Serial.println("done reading values");
+  //Serial.flush();
+}
+
+/*
+void update_control() {
+  char dim = (char) Serial.parseInt();
+  int rate = (int) Serial.parseInt();
+  v[dim] = rate;
+}
+*/
+
+// TODO if period isn't limiting serialEvent response time now. what is?
+
+// this function name has special importance in the Arduino environment
+// it is an interrupt triggered by receipt of serial data
+void serialEvent() {
+  //Serial.println("serialEvent");
+  update_control();
 }
