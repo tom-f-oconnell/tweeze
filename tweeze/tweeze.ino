@@ -28,7 +28,8 @@ int v[NUM_SERVOS];
 int u[NUM_SERVOS];
 
 int step_size = 1;
-int period = 1;
+// below 20 didn't seem to be working
+int period = 20;
 
 void setup() {
   Serial.begin(9600);
@@ -186,16 +187,6 @@ void update_control() {
   //Serial.println("done reading values");
   //Serial.flush();
 }
-
-/*
-void update_control() {
-  char dim = (char) Serial.parseInt();
-  int rate = (int) Serial.parseInt();
-  v[dim] = rate;
-}
-*/
-
-// TODO if period isn't limiting serialEvent response time now. what is?
 
 // this function name has special importance in the Arduino environment
 // it is an interrupt triggered by receipt of serial data

@@ -12,12 +12,12 @@ code2dim = {k: axis2dim[code2axis[k]] for k in code2axis.keys()}
 
 invert_axis = {'pitch': False, 'yaw': False, 'roll': False}
 
-port = '/dev/ttyACM2'
+port = '/dev/ttyACM1'
 baud = 9600
 zero_below = 130
 min_interval = 0.01
 
-with serial.Serial(port=port, baudrate=baud, timeout=0, write_timeout=0.25) as ard:
+with serial.Serial(port=port, baudrate=baud, timeout=0, write_timeout=None) as ard:
     while True:
         es = list(inputs.get_gamepad())
         random.shuffle(es)

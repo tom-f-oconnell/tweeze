@@ -1,2 +1,5 @@
 why does pyserial start consistently write_timeout-ing after a certain length of time?
     -certain event causing it? unclear
+
+the above may not be a problem anymore, but each dim / motor seems to independently stop being
+responsive after a bit, seemingly proportional to use
