@@ -13,8 +13,8 @@ code2dim = {k: axis2dim[code2axis[k]] for k in code2axis.keys()}
 invert_axis = {'pitch': False, 'yaw': False, 'roll': False}
 
 port = '/dev/ttyACM1'
-baud = 9600
-zero_below = 130
+baud = 57600
+zero_below = 2000
 min_interval = 0.01
 
 with serial.Serial(port=port, baudrate=baud, timeout=0, write_timeout=None) as ard:
@@ -41,4 +41,9 @@ with serial.Serial(port=port, baudrate=baud, timeout=0, write_timeout=None) as a
                     print('write timeout')
                     pass
 
+                print(ard.readline())
+
+        l = ard.readline()
+        if l is not None and len(l) > 0:
+            print(l)
 

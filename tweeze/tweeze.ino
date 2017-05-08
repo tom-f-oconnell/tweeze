@@ -2,8 +2,8 @@
 #include <Servo.h>
 
 #define NUM_SERVOS 3
-#define MAX_POS 180
-#define MIN_POS 0
+#define MAX_POS 2000
+#define MIN_POS 1000
 
 // this struct / union pair for easier serial was adapte
 // from comments by Robin2 on Arduino forums
@@ -29,10 +29,10 @@ int u[NUM_SERVOS];
 
 int step_size = 1;
 // below 20 didn't seem to be working
-int period = 20;
+int period = 30;
 
 void setup() {
-  Serial.begin(9600);
+  Serial.begin(57600);
 
   // TODO way to not change position on attach?
   attach_all();
@@ -64,7 +64,6 @@ int sign(int i) {
   }
 }
 
-// TODO fix 179 / 1 cases
 boolean will_move(int si) {
   // step size does not matter in right operand to &&
   return sign(v[si]) != 0 && in_range(p[si] + sign(v[si]));
@@ -88,7 +87,6 @@ void attach_needed() {
   }
 }
 
-// see will_move TODO
 void move_needed() {
   for (int i=0;i<NUM_SERVOS;i++) {
     if (will_move(i)) {
@@ -98,7 +96,6 @@ void move_needed() {
       u[i] = step_size * sign(v[i]);
 
       int new_p = p[i] + u[i];
-      /*
       if (MAX_POS < new_p) {
         new_p = MAX_POS;
         u[i] = new_p - p[i];
@@ -107,26 +104,16 @@ void move_needed() {
         new_p = MIN_POS;
         u[i] = new_p - p[i];
       }
-      */
       
-      s[i].write(new_p);
+      s[i].writeMicroseconds(new_p);
     }
   }
 }
 
 void update_positions() {
   for (int i=0;i<NUM_SERVOS;i++) {
-    /*
-    // TODO intermittently (or always if not costly) check servo position against expected update
-    // and make period minimum such that expectation is not violated
     p[i] += u[i];
     u[i] = 0;
-
-    if (!in_range(p[i])) {
-      p[i] = s[i].read();
-    }
-    */
-    p[i] = s[i].read();
   }
 }
 
@@ -158,9 +145,42 @@ void print_rates() {
   Serial.println("");
 }
 
+void print_will_move() {
+  Serial.print("will_move:");
+  for (int i=0;i<NUM_SERVOS;i++) {
+    Serial.print(will_move(i));
+    if (i != NUM_SERVOS - 1) {
+      Serial.print(", ");
+    }
+  }
+  Serial.println("");
+}
+
+void print_moves() {
+  Serial.print("new positions:");
+  for (int i=0;i<NUM_SERVOS;i++) {
+    u[i] = step_size * sign(v[i]);
+
+    int new_p = p[i] + u[i];
+    if (MAX_POS < new_p) {
+      new_p = MAX_POS;
+      u[i] = new_p - p[i];
+      
+    } else if (MIN_POS > new_p) {
+      new_p = MIN_POS;
+      u[i] = new_p - p[i];
+    }
+    
+    Serial.print(new_p);
+    if (i != NUM_SERVOS - 1) {
+      Serial.print(", ");
+    }
+  }
+  Serial.println("");
+}
+
 // TODO also detach servos if not in active serial communication?
 void loop() {
-  // TODO still detach servos if they are at bounds / v=0? would need to handle retachment then
   attach_needed();
   move_needed();
   delay(period);
@@ -170,10 +190,18 @@ void loop() {
 
 void update_control() {
   if (Serial.available() < sizeof(servo_update)) {
+    /*
     Serial.print("only ");
     Serial.print(Serial.available());
     Serial.println(" bytes available");
+    */
     return;
+  } else if (Serial.available() % sizeof(servo_update) != 0) {
+    // TODO this might actually be causing problems
+    while (Serial.available() > 0) {
+      Serial.read();
+    }
+    Serial.flush();
   }
 
   for (byte i=0;i < sizeof(servo_update);i++) {
@@ -184,8 +212,7 @@ void update_control() {
     data.arr[i] = buff[i];
   }
   v[data.u.dim] = data.u.velocity;
-  //Serial.println("done reading values");
-  //Serial.flush();
+  Serial.flush();
 }
 
 // this function name has special importance in the Arduino environment
@@ -193,4 +220,5 @@ void update_control() {
 void serialEvent() {
   //Serial.println("serialEvent");
   update_control();
+  print_moves();
 }
